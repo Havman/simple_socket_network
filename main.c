@@ -25,9 +25,7 @@ int main(int argc, char **argv){
     if( udp_socket = socket(AF_INET, SOCK_DGRAM, 0) < 0 )
         perror("socket error");
 
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(SERVER_PORT);
+
 
     if( inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <=0)
         perror("inet_pton error");

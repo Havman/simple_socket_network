@@ -1,22 +1,28 @@
 #include "shared.h"
 
-#define SERVER_PORT 1234
-#define BUFF_SIZE 1024
-
 int socket_fd;
 char *filename = "dab.gif";
  
 int main() {
     int file = open(filename, O_RDONLY);
-    char *buf = (char *) calloc(BUFF_SIZE, sizeof(char));
-    
-    int readed = read(fd_in, buf, BUFF_SIZE);
-    while (readed > 0) {
-        //printf("%s\n\n", buf);
-        if (write(fd_out, buf, readed) < 0) {
-            perror("Error while writing");
-        }
+    struct sockaddr_in servaddr;
 
-        readed = read(fd_in, buf, BUFF_SIZE);
+    if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        error_exit("socket");
+    }
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(SERVER_PORT);
+
+    if (connect(socket_fd, (struct sockaddr*) &servaddr, sizeof(servaddr)) < 0)
+        perror("connect error");
+
+    void *buf = calloc(BUFF_SIZE, sizeof(void));
+
+    int readed = read(file, buf, BUFF_SIZE);
+    while (readed > 0) {
+        readed = read(file, buf, BUFF_SIZE);
+        send_message(socket_fd, BUFF_SIZE, buf);
     }
 }
