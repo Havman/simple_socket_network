@@ -16,7 +16,6 @@
 int main(int argc, char **argv){
     int udp_socket;
     int sendbytes, n;
-    struct sockaddr_in servaddr;
     char sendline[MAXLINE];
     char recvline[MAXLINE];
     if (argc != 2 )

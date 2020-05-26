@@ -1,16 +1,14 @@
 all: server.x client.x
 
-shared.o: shared.c shared.h
-
 server.o: server.c
 
 client.o: client.c
 
-server.x: server.o shared.o
+server.x: server.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-client.x: client.o shared.o
+client.x: client.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean: 
-	rm *.x *.o *.a
+	rm *.x *.o copy-dab.gif
