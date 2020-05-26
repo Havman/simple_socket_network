@@ -18,7 +18,8 @@
 #define BUFF_SIZE 1024
 
 int socket_fd;
-char *filename = "cpy-ball.gif";
+int file_fd;
+void *buf;
 
 void error_exit(char *error) {
     char message[strlen(error) + 7];
@@ -26,11 +27,17 @@ void error_exit(char *error) {
     perror(message);
     exit(errno);
 }
+
+void handle_sigint() {
+    free(buf);
+    close(file_fd);
+    close(socket_fd);
+}
  
 int main() {
-    printf("Client starting...");
-    int file = open(filename, O_WRONLY | O_CREAT);
-    if (file < 0) {
+    char *filename = "cpy-ball.gif";
+    file_fd = open(filename, O_WRONLY | O_CREAT, 0666);
+    if (file_fd < 0) {
         error_exit("open");
     }
 
@@ -50,18 +57,16 @@ int main() {
         error_exit("connect");
     }
 
-    void *buf = calloc(BUFF_SIZE, sizeof(void));
+    signal(SIGINT, handle_sigint); 
+
+    buf = calloc(BUFF_SIZE, sizeof(void));
 
     int readed = read(socket_fd, buf, BUFF_SIZE);
-    while (readed > 0) {
-        printf(".");
-        if (write(file, buf, BUFF_SIZE) < 0) {
+    while (readed == BUFF_SIZE) {
+        if (write(file_fd, buf, BUFF_SIZE) < 0) {
             error_exit("write-file");
         };
         readed = read(socket_fd, buf, BUFF_SIZE);
     }
-
-    free(buf);
-    close(file);
-    close(socket_fd);
+    handle_sigint();
 }

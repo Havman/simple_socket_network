@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+
 #define SERVER_PORT 1234
 #define BUFF_SIZE 1024
 
@@ -47,15 +48,15 @@ int main() {
 
     void *buf = calloc(BUFF_SIZE, sizeof(void));
 
-    sprintf(buf, "Hejka");
-    printf("%s\n", buf);
-
     int readed = read(file, buf, BUFF_SIZE);
     while (readed > 0) {
         printf(".");
         write(socket_fd, buf, BUFF_SIZE);
         readed = read(file, buf, BUFF_SIZE);
     }
+
+    sprintf(buf, "end");
+    write(socket_fd, buf, 3);
 
     free(buf);
     close(file);
