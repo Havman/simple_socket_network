@@ -19,6 +19,8 @@
 
 int socket_fd;
 char *filename = "ball.gif";
+void *buf;
+int file_fd;
 
 void error_exit(char *error) {
     char message[strlen(error) + 7];
@@ -26,9 +28,15 @@ void error_exit(char *error) {
     perror(message);
     exit(errno);
 }
+
+void handle_sigint() {
+    free(buf);
+    close(file_fd);
+    close(socket_fd);
+}
  
 int main() {
-    int file = open(filename, O_RDONLY);
+    file_fd = open(filename, O_RDONLY);
     struct sockaddr_in servaddr;
 
     if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -39,26 +47,23 @@ int main() {
         .sin_family = AF_INET,
         .sin_port = htons(SERVER_PORT),
         .sin_addr = {
-            .s_addr = inet_addr("127.0.0.1")
+        .s_addr = inet_addr("127.0.0.1")
         }
     };
 
     if (connect(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0)
         error_exit("connect error");
 
-    void *buf = calloc(BUFF_SIZE, sizeof(void));
+    buf = calloc(BUFF_SIZE, sizeof(void));
 
-    int readed = read(file, buf, BUFF_SIZE);
+    int readed = read(file_fd, buf, BUFF_SIZE);
     while (readed > 0) {
-        printf(".");
         write(socket_fd, buf, BUFF_SIZE);
-        readed = read(file, buf, BUFF_SIZE);
+        readed = read(file_fd, buf, BUFF_SIZE);
     }
 
     sprintf(buf, "end");
     write(socket_fd, buf, 3);
 
-    free(buf);
-    close(file);
-    close(socket_fd);
+    handle_sigint();
 }
