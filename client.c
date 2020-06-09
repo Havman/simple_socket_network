@@ -18,8 +18,8 @@
 #define BUFF_SIZE 1024
 
 int socket_fd;
-int file_fd;
 void *buf;
+int file_fd;
 
 void error_exit(char *error) {
     char message[strlen(error) + 7];
@@ -35,11 +35,7 @@ void handle_sigint() {
 }
  
 int main() {
-    char *filename = "cpy-ball.gif";
-    file_fd = open(filename, O_WRONLY | O_CREAT, 0666);
-    if (file_fd < 0) {
-        error_exit("open");
-    }
+    struct sockaddr_in servaddr;
 
     if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         error_exit("socket");
@@ -53,20 +49,24 @@ int main() {
         }
     };
 
-    if (bind(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
-        error_exit("connect");
-    }
+    if (connect(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0)
+        error_exit("connect error");
 
-    signal(SIGINT, handle_sigint); 
+    write(socket_fd, "ball.gif", 8);
 
     buf = calloc(BUFF_SIZE, sizeof(void));
+    
+    char *filename = "ball.gif";
+    file_fd = open(filename, O_WRONLY);
 
-    int readed = read(socket_fd, buf, BUFF_SIZE);
-    while (readed == BUFF_SIZE) {
-        if (write(file_fd, buf, BUFF_SIZE) < 0) {
-            error_exit("write-file");
-        };
-        readed = read(socket_fd, buf, BUFF_SIZE);
+    int readed = read(file_fd, buf, BUFF_SIZE);
+    while (readed > 0) {
+        write(socket_fd, buf, BUFF_SIZE);
+        readed = read(file_fd, buf, BUFF_SIZE);
     }
+
+    sprintf(buf, "end");
+    write(socket_fd, buf, 3);
+
     handle_sigint();
 }
