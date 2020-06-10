@@ -17,7 +17,7 @@
 #define IP_ADDRESS "127.0.0.1"
 #define SERVER_PORT 1235
 #define MESSAGE_SIZE 32
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 1000
 
 int socket_fd;
 int file_fd;
@@ -63,7 +63,7 @@ void receive_file(char *newfilename) {
         if (readed < 0) {
             error_exit("recvfrom");
         }
-        if (readed == 0) break;
+        if (readed < BUFF_SIZE) break;
         if (write(file_fd, buf, readed) < 0) {
             error_exit("write-file");
         };

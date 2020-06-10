@@ -16,11 +16,9 @@
 
 #define SERVER_PORT 1235
 #define MESSAGE_SIZE 32
-#define BUFF_SIZE 1024 
+#define BUFF_SIZE 1000 
 
 int socket_fd;
-char *filename;
-int file_fd;
 struct sockaddr_in addr;
 socklen_t addrlen;
 
@@ -37,6 +35,26 @@ void handle_sigint() {
     exit(0);
 }
 
+int get_count(int num) {
+    int count = 0;
+    do {
+        count++;
+        num /= 10;
+    } while(num != 0);
+
+    return count+1;
+}
+
+int create_packet(int num, void *buf, int file_fd) {
+    int count = get_count(num);
+    void *number = calloc(count, sizeof(void));
+    sprintf(number, "%d:", num);
+    int readed = read(file_fd, buf+count, BUFF_SIZE-count);
+    strncpy(buf,number, count);
+    printf("%d", readed);
+    sendto(socket_fd, buf, readed+count, 0, (struct sockaddr*)&addr, addrlen);
+    return readed;
+}
 
 void bind_socket() {
     if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -56,21 +74,23 @@ void bind_socket() {
 
 void send_file(char *filename) {
     printf("Trying to send %s\n", filename);
-    void *buf = calloc(BUFF_SIZE, sizeof(void));
+    void* buf = malloc(BUFF_SIZE);
     int file_fd = open(filename, O_RDONLY);
     if (file_fd < 0) {
         error_exit("open");
     }
     int readed;
+    int iterator = 1;
     while (1) {
-        printf(".");
-        readed = read(file_fd, buf, BUFF_SIZE);
-        sendto(socket_fd, buf, readed, 0, (struct sockaddr*)&addr, addrlen);
-        if (readed <= 0) {
-            break;
+        bzero(buf, BUFF_SIZE);
+        readed = create_packet(iterator, buf, file_fd);
+        printf("package nr: %d - size: %d\n", iterator, readed);       
+        if (readed < 0) {
+            error_exit("recvfrom");
         }
+        if (readed < BUFF_SIZE) break;
+        iterator++;
     }
-    printf(".\n");
     free(buf);
     close(file_fd);
     printf("Sending complete!\n");

@@ -1,10 +1,10 @@
-all: server2.x client.x
+all: server.x client.x
 
-server2.o: server2.c
+server.o: server.c
 
 client.o: client.c
 
-server2.x: server2.o
+server.x: server.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 client.x: client.o
