@@ -63,10 +63,10 @@ void receive_file(char *newfilename) {
         if (readed < 0) {
             error_exit("recvfrom");
         }
-        if (readed < BUFF_SIZE) break;
         if (write(file_fd, buf, readed) < 0) {
             error_exit("write-file");
         };
+        if (readed < BUFF_SIZE) break;
     }
     printf(".\n");
     free(buf);

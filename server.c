@@ -53,7 +53,7 @@ int create_packet(int num, void *buf, int file_fd) {
     strncpy(buf,number, count);
     printf("%d", readed);
     sendto(socket_fd, buf, readed+count, 0, (struct sockaddr*)&addr, addrlen);
-    return readed;
+    return readed+count;
 }
 
 void bind_socket() {
