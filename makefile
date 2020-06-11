@@ -11,4 +11,4 @@ client.x: client.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean: 
-	rm *.x *.o cpy-ball.gif
+	rm *.x *.o
