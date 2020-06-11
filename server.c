@@ -35,23 +35,33 @@ void handle_sigint() {
     exit(0);
 }
 
+// Returns number of digits + 1, because protocol contains ':'
 int get_count(int num) {
     int count = 0;
     do {
         count++;
         num /= 10;
     } while(num != 0);
-
     return count+1;
 }
 
-int create_packet(int num, void *buf, int file_fd) {
+int create_and_send_packet(int num, void *buf, int file_fd) {
     int count = get_count(num);
-    void *number = calloc(count, sizeof(void));
+    void *number = malloc(count);
     sprintf(number, "%d:", num);
+
+    // Read data from file
     int readed = read(file_fd, buf+count, BUFF_SIZE-count);
+    if (readed < 0) {
+        error_exit("read-file");
+    }
     strncpy(buf,number, count);
-    sendto(socket_fd, buf, readed+count, 0, (struct sockaddr*)&addr, addrlen);
+
+    // If readed is less than 0 it means there was an error       
+    if (sendto(socket_fd, buf, readed+count, 0, (struct sockaddr*)&addr, addrlen) < 0) {
+        error_exit("sento-socket");
+    }
+    free(number);
     return readed+count;
 }
 
@@ -63,7 +73,6 @@ void bind_socket() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(SERVER_PORT);
     addr.sin_addr.s_addr = INADDR_ANY;
-
     addrlen  = sizeof(addr);
 
     if (bind(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
@@ -73,22 +82,33 @@ void bind_socket() {
 
 void send_file(char *filename) {
     printf("Trying to send %s\n", filename);
-    void* buf = malloc(BUFF_SIZE);
     int file_fd = open(filename, O_RDONLY);
     if (file_fd < 0) {
         error_exit("open");
     }
     int readed;
-    int iterator = 1;
-    while (1) {
+    void* buf = malloc(BUFF_SIZE);
+    for (int iterator = 1;;iterator++) {
         bzero(buf, BUFF_SIZE);
-        readed = create_packet(iterator, buf, file_fd);
-        printf("package nr: %d - size: %d\n", iterator, readed);       
-        if (readed < 0) {
-            error_exit("recvfrom");
+
+        // Reading file, create and sending package 
+        readed = create_and_send_packet(iterator, buf, file_fd);
+        printf("Sending package nr: %d - size: %d\n", iterator, readed);
+
+        // Get from client respond that he received data package
+        char respond[MESSAGE_SIZE];
+        if (recvfrom(socket_fd, &respond, MESSAGE_SIZE, 0, (struct sockaddr*)&addr, &addrlen) < 0) {
+            error_exit("reccvfrom-respond");
         }
+
+        // Check if the message was confirment
+        if (strcmp(respond, "confirment") != 0) {
+            printf("Client does not confirmed receiving package.");
+            break;
+        }
+
+        // If readed is less than BUFF_SIZE, it means, that it's end of file
         if (readed < BUFF_SIZE) break;
-        iterator++;
     }
     free(buf);
     close(file_fd);
@@ -101,9 +121,11 @@ int main() {
 
     char message[MESSAGE_SIZE];
     while(1) {
+        // Receive from client name of the file
         if (recvfrom(socket_fd, message, MESSAGE_SIZE, 0, (struct sockaddr*)&addr, &addrlen) < 0) {
             error_exit("reccvfrom");
         } 
+        // Start sending procedure
         send_file(message);
     };
 

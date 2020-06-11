@@ -42,18 +42,14 @@ int get_count(int num) {
         count++;
         num /= 10;
     } while(num != 0);
-
     return count+1;
 }
-
 
 void connect_socket() {
     if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         error_exit("socket");
     }
-
     addrlen  = sizeof(addr);
-
     addr.sin_family = AF_INET; 
     addr.sin_port = htons(SERVER_PORT); 
     addr.sin_addr.s_addr = inet_addr(IP_ADDRESS); 
@@ -66,48 +62,43 @@ void receive_file(char *newfilename) {
         error_exit("open");
     }
     int readed;
-    int iterator = 1;
-    int package_quantity = 0;
-    int package_number;
-    int last_package= 26000;
-    int disorder_counter = 0;
     int count;
-    char* end;
-    while (1) {
-        package_quantity++;
-        void *buf = calloc(BUFF_SIZE, sizeof(void));
+    char* end; // use for strtol
+    void *buf = malloc(BUFF_SIZE);
+
+    for (int package_number = 1;;package_number++) {
+        
         bzero(buf, BUFF_SIZE);
-        printf("ITERATOR = %d\n", iterator);
+
+        // Receive data from server
         readed = recvfrom(socket_fd, buf, BUFF_SIZE, 0, (struct sockaddr*)&addr, &addrlen); 
+
+        // If readed is less than 0 it means there was an error
         if (readed < 0) {
             error_exit("recvfrom");
         }
+
+        // Get package number from data where protocol is <number>:<message>
         package_number = strtol(buf, &end, 0);
         count = get_count(package_number);
 
-        printf("PACKAGE NUMBER = %d\n", package_number);
+        printf("Received package nr: %d\n", package_number);
 
-        if(iterator != package_number){
-            disorder_counter++;
-            iterator = package_number;
-        }
-        iterator = package_number;
-        if(disorder_counter > 5)
-            error_exit("Too many disorder packages!\n");
-
+        // Write to file received data
         if (write(file_fd, buf+count, readed-count) < 0) {
             error_exit("write-file");
-        };
-
-        if (readed < BUFF_SIZE){
-            last_package = package_number;
-            break;
         }
-        iterator++;
-        printf("disorder_counter = %d\n", disorder_counter);
 
+        // Send to sever confirment that package was received
+        if (sendto(socket_fd, "confirment", MESSAGE_SIZE, 0, (struct sockaddr*)&addr, addrlen) < 0) {
+            error_exit("sendto-respond");
+        }
+
+        // If readed is less than BUFF_SIZE, but greater or equal to 0 it means, that it's end of file
+        if (readed < BUFF_SIZE) break;
     }
     printf("File downloaded properly\n");
+    free(buf);
 }
  
 int main(int argc, char *argv[]) {
@@ -115,14 +106,11 @@ int main(int argc, char *argv[]) {
         printf("Need filename, and new filename");
         return -1;
     }
-
     signal(SIGINT, handle_sigint);
     connect_socket();
-    
     if (sendto(socket_fd, argv[1], MESSAGE_SIZE, 0, (struct sockaddr*)&addr, addrlen) < 0) {
         error_exit("sendto");
     }
     receive_file(argv[2]);
-
     handle_sigint();
 }
