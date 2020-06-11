@@ -16,7 +16,7 @@
 
 #define SERVER_PORT 1235
 #define MESSAGE_SIZE 32
-#define BUFF_SIZE 1000 
+#define BUFF_SIZE 1000
 
 int socket_fd;
 struct sockaddr_in addr;
@@ -51,7 +51,6 @@ int create_packet(int num, void *buf, int file_fd) {
     sprintf(number, "%d:", num);
     int readed = read(file_fd, buf+count, BUFF_SIZE-count);
     strncpy(buf,number, count);
-    printf("%d", readed);
     sendto(socket_fd, buf, readed+count, 0, (struct sockaddr*)&addr, addrlen);
     return readed+count;
 }

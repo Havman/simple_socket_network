@@ -36,6 +36,17 @@ void handle_sigint() {
     close(socket_fd);
 }
 
+int get_count(int num) {
+    int count = 0;
+    do {
+        count++;
+        num /= 10;
+    } while(num != 0);
+
+    return count+1;
+}
+
+
 void connect_socket() {
     if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         error_exit("socket");
@@ -50,26 +61,52 @@ void connect_socket() {
 
 void receive_file(char *newfilename) {
     printf("Creating file %s\n", newfilename);
-    int file_fd = open(newfilename, O_WRONLY | O_CREAT, 0666);
+    int file_fd = open(newfilename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file_fd < 0) {
         error_exit("open");
     }
-    void *buf = calloc(BUFF_SIZE, sizeof(void));
     int readed;
+    int iterator = 1;
+    int package_quantity = 0;
+    int package_number;
+    int last_package= 26000;
+    int disorder_counter = 0;
+    int count;
+    char* end;
     while (1) {
-        printf(".");
+        package_quantity++;
+        void *buf = calloc(BUFF_SIZE, sizeof(void));
         bzero(buf, BUFF_SIZE);
+        printf("ITERATOR = %d\n", iterator);
         readed = recvfrom(socket_fd, buf, BUFF_SIZE, 0, (struct sockaddr*)&addr, &addrlen); 
         if (readed < 0) {
             error_exit("recvfrom");
         }
-        if (write(file_fd, buf, readed) < 0) {
+        package_number = strtol(buf, &end, 0);
+        count = get_count(package_number);
+
+        printf("PACKAGE NUMBER = %d\n", package_number);
+
+        if(iterator != package_number){
+            disorder_counter++;
+            iterator = package_number;
+        }
+        iterator = package_number;
+        if(disorder_counter > 5)
+            error_exit("Too many disorder packages!\n");
+
+        if (write(file_fd, buf+count, readed-count) < 0) {
             error_exit("write-file");
         };
-        if (readed < BUFF_SIZE) break;
+
+        if (readed < BUFF_SIZE){
+            last_package = package_number;
+            break;
+        }
+        iterator++;
+        printf("disorder_counter = %d\n", disorder_counter);
+
     }
-    printf(".\n");
-    free(buf);
     printf("File downloaded properly\n");
 }
  
